@@ -15,7 +15,7 @@ struct CodeNode {
 	std::string code; //code associated with this node
 	std::string name; //register assoicated with this node
 
-}
+};
 }
 %token ADD SUB MULT DIV MOD 
 %token LT GT LTE GTE EQUIV NOTEQ
@@ -37,6 +37,8 @@ struct CodeNode {
 %left AND
 %right NOT
 %right ASSIGN
+
+%type<val> var  
 
 %token <stringVal> IDENTIFIER
 %token <integerVal> DIGITS
