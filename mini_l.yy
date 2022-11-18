@@ -2,11 +2,20 @@
 int yylex();
 void yyerror(const char *s);
 #include <stdio.h>
+#include <string>
 %}
 
 %union{
 int integerVal;
 char* stringVal;
+
+//from pp slides
+struct CodeNode {
+	
+	std::string code; //code associated with this node
+	std::string name; //register assoicated with this node
+
+}
 }
 %token ADD SUB MULT DIV MOD 
 %token LT GT LTE GTE EQUIV NOTEQ
@@ -120,7 +129,24 @@ var_loop:	  var {  }
 			  | var_loop COMMA var {  }
 			  ;		
 		
-var:	  IDENTIFIER {  }
+
+
+var:	  IDENTIFIER { 
+		
+		CodeNode *node = new CodeNode;
+		node -> code = "";
+		node -> name = $1;
+		
+		std::string error;
+		if(!find(node -> name, it, error)){
+			yyerror(error.c_str());
+		}
+
+		$$ = node;
+	 }
+
+
+
 		| IDENTIFIER L_SQUARE_BRACKET expression R_SQUARE_BRACKET {  }
 		;
 
