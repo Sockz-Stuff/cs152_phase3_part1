@@ -3,19 +3,21 @@ int yylex();
 void yyerror(const char *s);
 #include <stdio.h>
 #include <string>
+
+//from slides
+struct CodeNode {
+
+	std::string code; //code associated with this node
+	std::string name; //register for the node
+
+};
+
 %}
 
 %union{
 int integerVal;
 char* stringVal;
 
-//from pp slides
-struct CodeNode {
-	
-	std::string code; //code associated with this node
-	std::string name; //register assoicated with this node
-
-};
 }
 %token ADD SUB MULT DIV MOD 
 %token LT GT LTE GTE EQUIV NOTEQ
