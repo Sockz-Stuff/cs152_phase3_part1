@@ -1,8 +1,46 @@
 %{
+#define YY_NO_UNPUT
+
+#include <iostream>
+#include <vector>
+#include <stack>
+#include <map>
+#include <sstream>
+#include <fstream>
+#include <stdio.h>
+#include <string>
+
+using namespace std;
+
+enum Type {INT,INT_ARR,FUNC};
+
+    struct Var{
+        
+        string *place;
+        string *value;
+        Type type;
+        int length;
+        string *index;
+    } ;
+
+    struct CodeNode{
+       stringstream *code;
+       string *place;
+       string *value;
+       string *offset;
+       string *op;
+       string *begin;
+       string *parent;
+       string *end;
+       Type type;
+       int length;
+       string *index;
+       vector<string> *ids;
+       vector<Var> *vars; 
+    };
+
 int yylex();
 int yyerror(const char *s);
-#include "header.h"
-
 stringstream *everything;
 void expression_code( CodeNode &DD,  CodeNode D2, CodeNode D3,string op);
 string * new_temp();
@@ -338,18 +376,13 @@ expression: mult_expr {
         ;
 
 expression_loop:    expression { 
-						
-				$$.code = $1.code;
-
+						$$.code = $1.code;
  					}
     				| expression_loop COMMA expression { 
-					
-	
-					$$.code = $3.code;
-					$$.op = new string();
-					$$.place = new_temp();
-					*$$.op = ',';
-
+						$$.code = $3.code;
+						$$.op = new string();
+						$$.place = new_temp();
+						*$$.op = ',';
 					}
     				;
 
@@ -357,9 +390,9 @@ mult_expr:	  term  {
 					$$.code = $1.code;
 					$$.place = $1.place;
  				}
-        	  | mult_expr MULT term { }
-			  | mult_expr DIV term {  }
-			  | mult_expr MOD term {  }
+        	  | mult_expr MULT term {}
+			  | mult_expr DIV term {}
+			  | mult_expr MOD term {}
         ;
 
 
@@ -368,7 +401,7 @@ term:	var {
 			$$.place = $1.place;
 			$$.index = $1.index;
  		}
-		| SUB var {  }
+		| SUB var {}
 		| DIGITS {
 			$$.code = new stringstream();
 			$$.place = new string();
@@ -495,4 +528,3 @@ int main(int argc, char ** argv) {
   file << everything->str();
   file.close();
 }
-
