@@ -194,6 +194,7 @@ declaration_arr:	ARRAY L_SQUARE_BRACKET DIGITS R_SQUARE_BRACKET OF {
 
 statement_loop: statement SEMICOLON statement_loop { 
 					$$.code = $1.code;
+					*($$.code) << $3.code->str();
 
 				 }
 				| 	/*statement_loop statement SEMICOLON*/ { 
