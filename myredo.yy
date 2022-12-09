@@ -11,12 +11,10 @@
 #include <string>
 
 using namespace std;
-
 enum Type {INT,INT_ARR,FUNC};
 
-    struct Var{
-        
-        string *place;
+    struct Variable{
+        string *name;
         string *value;
         Type type;
         int length;
@@ -24,34 +22,35 @@ enum Type {INT,INT_ARR,FUNC};
     } ;
 
     struct CodeNode{
+	   vector<Variable> *variable_vector; 
        stringstream *code;
-       string *place;
+       string *name;
        string *value;
-       string *offset;
-       string *op;
+       string *oper;
        string *begin;
-       string *parent;
        string *end;
        Type type;
        int length;
        string *index;
-       vector<string> *ids;
-       vector<Var> *vars; 
     };
 
 int yylex();
 int yyerror(const char *s);
 stringstream *everything;
-void expression_code( CodeNode &DD,  CodeNode D2, CodeNode D3,string op);
-string * new_temp();
-string * new_label();
-string  go_to(string *s);
-string dec_label(string *s);
-string dec_temp(string *s);
-int count =0;
-string gen_code(string *res, string op, string *val1, string *val2);
-int tempi = 0;
-int templ = 0;
+string * create_temp();
+
+string * create_label();
+string  go_to(string *s){
+	return ":= "+ *s + "\n"; 
+}
+string dec_label(string *s){
+	return ": " +*s + "\n"; 
+}
+string dec_temp(string *s){
+	return ". " +*s + "\n"; 
+}
+int temp_count = 0;
+int lable_count = 0;
 %}
 
 %union{
@@ -88,7 +87,7 @@ struct CodeNode CodeNode;
 %type <stringVal> IDENTIFIER
 %type <integerVal> DIGITS
 %type <start> Program
-%type <CodeNode> ident function declaration_loop declaration var2 dec_2 dec_3 statement statement_loop statement_else bool_expr Relation_Exp Relation_Exps comp expression expression_loop mult_expr term var var_loop
+%type <CodeNode> ident function declaration_loop declaration var2 declaration_comma declaration_arr statement statement_loop statement_else bool_expr Relation_Exp Relation_Exps comp expression expression_loop mult_expr term var var_loop
 
 %%
 //func test; bp var:it; ep bl el bb var=24; eb
@@ -106,13 +105,11 @@ Program:     function Program{
 function:   FUNCTION ident SEMICOLON BEGINPARAMS declaration_loop ENDPARAMS BEGINLOCALS declaration_loop ENDLOCALS BEGINBODY statement_loop ENDBODY
             { 
               $$.code = new stringstream();
-			  string tmp = *$2.place;
-              *($$.code)  << "func " << *$2.place << "\n" << $5.code->str() << $8.code->str();
-			  for(int i = 0; i < $5.vars->size(); ++i){
-                    if((*$5.vars)[i].type == INT){
-                        *($$.code) << "= " << *((*$5.vars)[i].place) << ", " << "$"<< to_string(i) << "\n";
-                    }else{
-
+			  string tmp = *$2.name;
+              *($$.code)  << "func " << *$2.name << "\n" << $5.code->str() << $8.code->str();
+			  for(int i = 0; i < $5.variable_vector->size(); ++i){
+                    if((*$5.variable_vector)[i].type == INT){
+                        *($$.code) << "= " << *((*$5.variable_vector)[i].name) << ", " << "$"<< to_string(i) << "\n";
                     }
                 }
 				*($$.code)<<$11.code->str();
@@ -123,30 +120,29 @@ function:   FUNCTION ident SEMICOLON BEGINPARAMS declaration_loop ENDPARAMS BEGI
 
 declaration_loop:  declaration SEMICOLON declaration_loop { 
 					$$.code = $1.code;
-                	$$.vars = $1.vars;
-					for( int i = 0; i < $3.vars->size(); ++i){
-						$$.vars->push_back((*$3.vars)[i]);
+                	$$.variable_vector = $1.variable_vector;
+					for( int i = 0; i < $3.variable_vector->size(); ++i){
+						$$.variable_vector->push_back((*$3.variable_vector)[i]);
 					}
                 	*($$.code) << $3.code->str();
                 	} 
     			|	{ 
-					//cout<<"Entered dec epsilon\n";
 						$$.code = new stringstream();
-						$$.vars = new vector<Var>();
+						$$.variable_vector = new vector<Variable>();
 					}
     			;
 
-declaration:	 IDENTIFIER dec_2 { 
+declaration:	 IDENTIFIER declaration_comma { 
 					$$.code = $2.code;
                     $$.type = $2.type;
                     $$.length = $2.length;
-                    $$.vars = $2.vars;
-                    Var v = Var();
-                    v.type = $2.type;
-                    v.length = $2.length;
-                    v.place = new string();
-                    *v.place = $1;
-                    $$.vars->push_back(v);
+                    $$.variable_vector = $2.variable_vector;
+                    Variable temp = Variable();
+                    temp.type = $2.type;
+                    temp.length = $2.length;
+                    temp.name = new string();
+                    *temp.name = $1;
+                    $$.variable_vector->push_back(temp);
                     if($2.type == INT_ARR){
                         *($$.code) << ".[] " << $1 << ", " << $2.length << "\n";
                     }
@@ -154,48 +150,43 @@ declaration:	 IDENTIFIER dec_2 {
                     else if($2.type == INT){
                         *($$.code) << ". " << $1 << "\n";
                        
-                    }else{
                     }
-					
-                    
                 }
 				;
-dec_2: 			COMMA IDENTIFIER dec_2{
+declaration_comma: 	COMMA IDENTIFIER declaration_comma{
 					$$.code = $3.code;
 					$$.type = $3.type;
 					$$.length = $3.length;
-					$$.vars = $3.vars;
-					Var v = Var();
-					v.type = $3.type;
-					v.length = $3.length;
-					v.place = new string();
-					*v.place = $2;
-					$$.vars->push_back(v);
+					$$.variable_vector = $3.variable_vector;
+					Variable temp = Variable();
+					temp.type = $3.type;
+					temp.length = $3.length;
+					temp.name = new string();
+					*temp.name = $2;
+					$$.variable_vector->push_back(temp);
 					if($3.type == INT_ARR){
                         *($$.code) << ".[] " << $2 << ", " << $3.length << "\n";
                     }
                     else if($3.type == INT){
                         *($$.code) << ". " << $2 << "\n";
-                    }else{
-                        //printf("================ ERRRR\n");
                     }
 				}
-				| COLON dec_3 INTEGER{
+				| COLON declaration_arr INTEGER{
 					$$.code = $2.code;
 					$$.type = $2.type;
                     $$.length = $2.length;
-                    $$.vars = $2.vars;
+                    $$.variable_vector = $2.variable_vector;
 				}
 				;
-dec_3:			ARRAY L_SQUARE_BRACKET DIGITS R_SQUARE_BRACKET OF {
+declaration_arr:	ARRAY L_SQUARE_BRACKET DIGITS R_SQUARE_BRACKET OF {
 					$$.code = new stringstream();
-                    $$.vars = new vector<Var>();
+                    $$.variable_vector = new vector<Variable>();
                     $$.type = INT_ARR;
                     $$.length = $3;
 				}
 				|{
 					$$.code = new stringstream();
-                    $$.vars = new vector<Var>();
+                    $$.variable_vector = new vector<Variable>();
                     $$.type = INT;
                     $$.length = 0;
 				}
@@ -216,28 +207,25 @@ statement:	  var ASSIGN expression {
 				$$.code = $1.code;
 				*($$.code) << $3.code->str();
 				if($1.type == INT && $3.type == INT){
-					*($$.code)<<"= "<< *$1.place<<", "<< *$3.place <<" \n";
+					*($$.code)<<"= "<< *$1.name<<", "<< *$3.name <<" \n";
 				}
 				else if($1.type == INT && $3.type == INT_ARR){
-                    *($$.code) << gen_code($1.place, "=[]", $3.place, $3.index);
+                    *($$.code) << "=[]" << " "<< *$1.name << ", "<< *$3.name << ", "<< *$3.index << "\n";
                 }
                 else if($1.type == INT_ARR && $3.type == INT && $1.value != NULL){
-                    *($$.code) << gen_code($1.value, "[]=", $1.index, $3.place);
+                    *($$.code) << "[]=" << " "<< *$1.name << ", "<< *$1.index << ", "<< *$3.name << "\n";
                 }
                 else if($1.type == INT_ARR && $3.type == INT_ARR){
-                    string *tmp = new_temp();
-                    *($$.code) << dec_temp(tmp) << gen_code(tmp, "=[]", $3.place, $3.index);
-                    *($$.code) << gen_code($1.value, "[]=", $1.index, tmp);
-                }
-                else{
-                        yyerror("Error: expression is null.");
-				}			
+                    string *tmp = create_temp();
+                    *($$.code) << dec_temp(tmp) << "=[]" << " "<< tmp << ", "<< *$3.name << ", "<< *$3.index << "\n";
+                    *($$.code) << "[]=" << " "<< *$1.value << "," << *$1.index << ", "<< tmp << "\n";
+                }		
  			}
 		| IF bool_expr THEN statement_loop statement_else ENDIF {
 			$$.code = new stringstream();
-            $$.begin = new_label();
-            $$.end = new_label();
-            *($$.code) << $2.code->str() << "?:= " << *$$.begin << ", " <<  *$2.place << "\n";
+            $$.begin = create_label();
+            $$.end = create_label();
+            *($$.code) << $2.code->str() << "?:= " << *$$.begin << ", " <<  *$2.name << "\n";
             if($5.begin != NULL){                       
                 *($$.code) << go_to($5.begin); 
                 *($$.code) << dec_label($$.begin)  << $4.code->str() << go_to($$.end);
@@ -253,17 +241,17 @@ statement:	  var ASSIGN expression {
 		| READ var_loop { 
 			$$.code = $2.code;
             if($2.type == INT){
-                *($$.code) << ".< " << *$2.place << "\n"; 
+                *($$.code) << ".< " << *$2.name << "\n"; 
             }
             else{
-                *($$.code) << ".[]< " << *$2.place << ", " << $2.index << "\n"; 
+                *($$.code) << ".[]< " << *$2.name << ", " << $2.index << "\n"; 
             }
             *($$.code) << $2.code->str();
 		 }
 		| WRITE var_loop { 
 			$$.code = $2.code;
             if($2.type == INT){
-                *($$.code) << ".> " << *$2.place << "\n"; 
+                *($$.code) << ".> " << *$2.name << "\n"; 
             }
             else{
                 *($$.code) << ".[]> " << *$2.value << ", " << *$2.index << "\n"; 
@@ -280,15 +268,15 @@ statement_else: {
 				}
 				| ELSE statement_loop{
 					$$.code = $2.code;
-					$$.begin = new_label();
+					$$.begin = create_label();
 				}
 				;
 bool_expr:	  Relation_Exps { 
 					$$.code = $1.code;
 					*($$.code) << $1.code->str();
-					if($1.op != NULL){
-						$$.place = new_temp();
-						*($$.code)  << dec_temp($$.place);
+					if($1.oper != NULL){
+						$$.name = create_temp();
+						*($$.code)  << dec_temp($$.name);
 					}
 
  				}
@@ -296,8 +284,8 @@ bool_expr:	  Relation_Exps {
         ;
 
 Relation_Exps:	  		Relation_Exp { 
-							$$.code = $1.code; 	//copy relation expression code over
-							$$.place = $1.place;		// copy the temp name where it will jump
+							$$.code = $1.code; 	
+							$$.name = $1.name;		
  						}
         			  | Relation_Exps AND Relation_Exp {  }
                       ;
@@ -306,8 +294,8 @@ Relation_Exp:	  expression comp expression {
 						$$.code = $1.code;
 						*($$.code) << $2.code->str();
                     	*($$.code) << $3.code->str();
-                    	$$.place = new_temp();
-                    	*($$.code)<< dec_temp($$.place) << gen_code($$.place, *$2.op, $1.place, $3.place);
+                    	$$.name = create_temp();
+                    	*($$.code)<< dec_temp($$.name) << *$2.oper << " " << *$$.name << ", "<< *$1.name << ", "<< *$3.name << "\n";
   				   }
 				  | NOT expression comp expression {  }
 				  | TRUE {  }
@@ -317,40 +305,40 @@ Relation_Exp:	  expression comp expression {
 
 comp:	  LT { 
 			$$.code = new stringstream();
-			$$.op = new string ();
-			*$$.op = "<";
+			$$.oper = new string ();
+			*$$.oper = "<";
  		 }
 		| GT { 
 			$$.code = new stringstream();
-			$$.op = new string ();
-			*$$.op = ">";
+			$$.oper = new string ();
+			*$$.oper = ">";
 		 }
 		| LTE { 
 			$$.code = new stringstream();
-			$$.op = new string ();
-			*$$.op = "<=";
+			$$.oper = new string ();
+			*$$.oper = "<=";
 		 }
 		| GTE { 
 			$$.code = new stringstream();
-			$$.op = new string ();
-			*$$.op = ">=";
+			$$.oper = new string ();
+			*$$.oper = ">=";
 		 }
 		| NOTEQ { 
 			$$.code = new stringstream();
-			$$.op = new string ();
-			*$$.op = "!=";
+			$$.oper = new string ();
+			*$$.oper = "!=";
 		 }
 		| EQUIV { 
 			$$.code = new stringstream();
-			$$.op = new string ();
-			*$$.op = "==";
+			$$.oper = new string ();
+			*$$.oper = "==";
 		 }
 		;
 
 expression: mult_expr { 
 			$$.code = $1.code;
-			$$.place = $1.place;
-			$$.op = $1.op;
+			$$.name = $1.name;
+			$$.oper = $1.oper;
 			$$.type = INT;
  			}
         	| expression ADD mult_expr {
@@ -358,21 +346,34 @@ expression: mult_expr {
 		
 			$$.code = $3.code;
 			*($$.code) << $3.code -> str();
-			if($3.op == NULL){
-				$$.place = $3.place;
-				$$.op = new string();
-				*$$.op = '+';
+			if($3.oper == NULL){
+				$$.name = $3.name;
+				$$.oper = new string();
+				*$$.oper = '+';
 			}
 			else{
-				$$.place = new_temp();
-				$$.op = new string();
-				*$$.op = '+';
+				$$.name = create_temp();
+				$$.oper = new string();
+				*$$.oper = '+';
 			}
 			
 			 
 
 			 }
-        	| expression SUB mult_expr {  }
+        	| expression SUB mult_expr { 
+			$$.code = $3.code;
+			*($$.code) << $3.code -> str();
+			if($3.oper == NULL){
+				$$.name = $3.name;
+				$$.oper = new string();
+				*$$.oper = '-';
+			}
+			else{
+				$$.name = create_temp();
+				$$.oper = new string();
+				*$$.oper = '-';
+			}
+			  }
         ;
 
 expression_loop:    expression { 
@@ -380,15 +381,15 @@ expression_loop:    expression {
  					}
     				| expression_loop COMMA expression { 
 						$$.code = $3.code;
-						$$.op = new string();
-						$$.place = new_temp();
-						*$$.op = ',';
+						$$.oper = new string();
+						$$.name = create_temp();
+						*$$.oper = ',';
 					}
     				;
 
 mult_expr:	  term  { 
 					$$.code = $1.code;
-					$$.place = $1.place;
+					$$.name = $1.name;
  				}
         	  | mult_expr MULT term {}
 			  | mult_expr DIV term {}
@@ -398,20 +399,20 @@ mult_expr:	  term  {
 
 term:	var { 
 			$$.code = $1.code;
-			$$.place = $1.place;
+			$$.name = $1.name;
 			$$.index = $1.index;
  		}
 		| SUB var {}
 		| DIGITS {
 			$$.code = new stringstream();
-			$$.place = new string();
-			*$$.place  = to_string($1);
+			$$.name = new string();
+			*$$.name  = to_string($1);
 				
 		 }
 		| SUB DIGITS {  }
 		| L_PAREN expression R_PAREN { 
 			$$.code = $2.code;
-			$$.place = $2.place; 
+			$$.name = $2.name; 
 		}
 		| SUB L_PAREN expression R_PAREN {  }
 		| IDENTIFIER L_PAREN expression_loop R_PAREN {  }
@@ -428,10 +429,8 @@ var:	  IDENTIFIER var2 {
 			$$.type = $2.type;
 			string tmp = $1;
 			if($2.index == NULL){
-				$$.place = new string();
-				*$$.place = $1;
-			}
-			else{
+				$$.name = new string();
+				*$$.name = $1;
 			}
 	 	  }
 
@@ -440,82 +439,44 @@ var:	  IDENTIFIER var2 {
 var2:   {
 			$$.code = new stringstream();
 			$$.index = NULL;
-			$$.place = NULL;
+			$$.name = NULL;
 			$$.type = INT;
 		}
 		| L_SQUARE_BRACKET expression R_SQUARE_BRACKET{
 			$$.code = $2.code;
-			$$.place = NULL;
-			$$.index = $2.place;
+			$$.name = NULL;
+			$$.index = $2.name;
 			$$.type = INT_ARR;
 		}
 		;
 ident: IDENTIFIER{
 
             string tmp = $1;
-            Var mf = Var();
-            mf.type = FUNC;
-            $$.place = new string();
-            *$$.place = tmp;
+            Variable temp = Variable();
+            temp.type = FUNC;
+            $$.name = new string();
+            *$$.name = tmp;
 		}
 %%
-void expression_code( CodeNode &DD, CodeNode D2, CodeNode D3, string op){
-    DD.code = D2.code;
-    *(DD.code) << D3.code->str();
-    if(D3.op == NULL){
-        DD.place = D2.place;
-        DD.op = new string();
-        *DD.op = op;
-    }
-    else{
-        //cout << "IN ELSE" << endl;
-        DD.place = new_temp();
-        DD.op = new string();
-        *DD.op = op;
-
-        *(DD.code) << dec_temp(DD.place)<< gen_code(DD.place , *D3.op, D2.place, D3.place);
-    } 
-}
-string go_to(string *s){
-    return ":= "+ *s + "\n"; 
-}
-string dec_label(string *s){
-    return ": " +*s + "\n"; 
-}
-string dec_temp(string *s){
-    return ". " +*s + "\n"; 
-}
-string * new_temp(){
-    string * t = new string();
-    ostringstream conv;
-    conv << tempi;
-    *t = "_temp"+ conv.str();
-    tempi++;
+string * create_temp(){
+	string * t = new string();
+    *t = "_label"+ temp_count;
+    temp_count++;
     return t;
 }
-string * new_label(){
-    string * t = new string();
-    ostringstream conv;
-    conv << templ;
-    *t = "_label"+ conv.str();
-    templ++;
+string * create_label(){
+	string * t = new string();
+    *t = "_label"+ lable_count;
+    lable_count++;
     return t;
 }
 
-string gen_code(string *res, string op, string *val1, string *val2){
-    if(op == "!"){
-        return op + " " + *res + ", " + *val1 + "\n";
-    }
-    else{
-        return op + " " + *res + ", " + *val1 + ", "+ *val2 +"\n";
-    }
-}
 
 int yyerror(const char *s)
 {
     extern int row;
     extern int col;
-    printf(">>> Line %d, position %d: %s\n",row,col,s);
+    printf(" Line %d, position %d: %s\n",row,col,s);
     return -1;
 }
 
