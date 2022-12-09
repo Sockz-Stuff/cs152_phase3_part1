@@ -43,10 +43,10 @@ string * create_label();
 string  go_to(string *s){
 	return ":= "+ *s + "\n"; 
 }
-string dec_label(string *s){
+string declare_Label(string *s){
 	return ": " +*s + "\n"; 
 }
-string dec_temp(string *s){
+string declare_Temp(string *s){
 	return ". " +*s + "\n"; 
 }
 int temp_count = 0;
@@ -218,7 +218,7 @@ statement:	  var ASSIGN expression {
                 }
                 else if($1.type == INT_ARR && $3.type == INT_ARR){
                     string *tmp = create_temp();
-                    *($$.code) << dec_temp(tmp) << "=[]" << " "<< tmp << ", "<< *$3.name << ", "<< *$3.index << "\n";
+                    *($$.code) << declare_Temp(tmp) << "=[]" << " "<< tmp << ", "<< *$3.name << ", "<< *$3.index << "\n";
                     *($$.code) << "[]=" << " "<< *$1.value << "," << *$1.index << ", "<< tmp << "\n";
                 }		
  			}
@@ -229,13 +229,13 @@ statement:	  var ASSIGN expression {
             *($$.code) << $2.code->str() << "?:= " << *$$.begin << ", " <<  *$2.name << "\n";
             if($5.begin != NULL){                       
                 *($$.code) << go_to($5.begin); 
-                *($$.code) << dec_label($$.begin)  << $4.code->str() << go_to($$.end);
-                *($$.code) << dec_label($5.begin) << $5.code->str();
+                *($$.code) << declare_Label($$.begin)  << $4.code->str() << go_to($$.end);
+                *($$.code) << declare_Label($5.begin) << $5.code->str();
             }
 			else{
-                *($$.code) << go_to($$.end)<< dec_label($$.begin)  << $4.code->str();
+                *($$.code) << go_to($$.end)<< declare_Label($$.begin)  << $4.code->str();
             }
-            *($$.code) << dec_label($$.end);
+            *($$.code) << declare_Label($$.end);
 		 }	
 		| WHILE bool_expr BEGINLOOP statement_loop ENDLOOP {  }
 		| DO BEGINLOOP statement_loop ENDLOOP WHILE bool_expr {  }
@@ -277,7 +277,7 @@ bool_expr:	  Relation_Exps {
 					*($$.code) << $1.code->str();
 					if($1.oper != NULL){
 						$$.name = create_temp();
-						*($$.code)  << dec_temp($$.name);
+						*($$.code)  << declare_Temp($$.name);
 					}
 
  				}
@@ -296,7 +296,7 @@ Relation_Exp:	  expression comp expression {
 						*($$.code) << $2.code->str();
                     	*($$.code) << $3.code->str();
                     	$$.name = create_temp();
-                    	*($$.code)<< dec_temp($$.name) << *$2.oper << " " << *$$.name << ", "<< *$1.name << ", "<< *$3.name << "\n";
+                    	*($$.code)<< declare_Temp($$.name) << *$2.oper << " " << *$$.name << ", "<< *$1.name << ", "<< *$3.name << "\n";
   				   }
 				  | NOT expression comp expression {  }
 				  | TRUE {  }
@@ -337,43 +337,43 @@ comp:	  LT {
 		;
 
 expression: mult_expr { 
-			$$.code = $1.code;
-			$$.name = $1.name;
-			$$.oper = $1.oper;
-			$$.type = INT;
+				$$.code = $1.code;
+				$$.name = $1.name;
+				$$.oper = $1.oper;
+				$$.type = INT;
  			}
         	| expression ADD mult_expr {
 				
 		
-			$$.code = $3.code;
-			*($$.code) << $3.code -> str();
-			if($3.oper == NULL){
-				$$.name = $3.name;
-				$$.oper = new string();
-				*$$.oper = '+';
-			}
-			else{
-				$$.name = create_temp();
-				$$.oper = new string();
-				*$$.oper = '+';
-			}
+				$$.code = $3.code;
+				*($$.code) << $3.code -> str();
+				if($3.oper == NULL){
+					$$.name = $3.name;
+					$$.oper = new string();
+					*$$.oper = '+';
+				}
+				else{
+					$$.name = create_temp();
+					$$.oper = new string();
+					*$$.oper = '+';
+				}
 			
 			 
 
 			 }
         	| expression SUB mult_expr { 
-			$$.code = $3.code;
-			*($$.code) << $3.code -> str();
-			if($3.oper == NULL){
-				$$.name = $3.name;
-				$$.oper = new string();
-				*$$.oper = '-';
-			}
-			else{
-				$$.name = create_temp();
-				$$.oper = new string();
-				*$$.oper = '-';
-			}
+				$$.code = $3.code;
+				*($$.code) << $3.code -> str();
+				if($3.oper == NULL){
+					$$.name = $3.name;
+					$$.oper = new string();
+					*$$.oper = '-';
+				}
+				else{
+					$$.name = create_temp();
+					$$.oper = new string();
+					*$$.oper = '-';
+				}
 			  }
         ;
 
@@ -392,9 +392,48 @@ mult_expr:	  term  {
 					$$.code = $1.code;
 					$$.name = $1.name;
  				}
-        	  | mult_expr MULT term {}
-			  | mult_expr DIV term {}
-			  | mult_expr MOD term {}
+        	  | mult_expr MULT term {
+					$$.code = $3.code;
+					*($$.code)<<$1.code->str();
+					if($1.oper == NULL){
+						$$.name = $3.name;
+						$$.oper = new string();
+						*$$.oper = "*";
+					}
+					else{
+						$$.name = create_temp();
+						$$.oper = new string();
+						*$$.oper = "*";
+					}
+			  }
+			  | mult_expr DIV term {
+					$$.code = $3.code;
+					*($$.code)<<$1.code->str();
+					if($1.oper == NULL){
+						$$.name = $3.name;
+						$$.oper = new string();
+						*$$.oper = "/";
+					}
+					else{
+						$$.name = create_temp();
+						$$.oper = new string();
+						*$$.oper = "/";
+					}
+			  }
+			  | mult_expr MOD term {
+					$$.code = $3.code;
+					*($$.code)<<$1.code->str();
+					if($1.oper == NULL){
+						$$.name = $3.name;
+						$$.oper = new string();
+						*$$.oper = "%";
+					}
+					else{
+						$$.name = create_temp();
+						$$.oper = new string();
+						*$$.oper = "%";
+					}
+			  }
         ;
 
 
@@ -416,7 +455,12 @@ term:	var {
 			$$.name = $2.name; 
 		}
 		| SUB L_PAREN expression R_PAREN {  }
-		| IDENTIFIER L_PAREN expression_loop R_PAREN {  }
+		| IDENTIFIER L_PAREN expression_loop R_PAREN { 
+			$$.code = $3.code;
+			$$.name = create_temp();
+			*($$.code) << declare_Temp($$.name)<<"call "<< $1 << ", "<< *$$.name << "\n";
+
+		 }
 		;
 
 var_loop:	  var { }
