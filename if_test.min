@@ -1,0 +1,23 @@
+func main;
+bp
+ep
+bl
+
+a : it;
+b : it;
+c : it;
+
+el
+bb
+
+  a = 100;
+  b = 50;
+
+  if a < b then
+    c = b;
+  elif
+    c = a;
+  fi;
+
+  write c; 
+eb
